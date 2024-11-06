@@ -23,14 +23,8 @@
         {
             "type": "cppbuild",
             "label": "C/C++: g++ compilar archivo activo",
-            "command": "/usr/bin/g++",
-            "args": [
-                "-fdiagnostics-color=always",
-                "-g",
-                "${file}",
-                "-o",
-                "${fileDirname}/${fileBasenameNoExtension}"
-            ],
+            "command": "./a.out",
+            "args": [],
             "options": {
                 "cwd": "${fileDirname}"
             },

@@ -1,106 +1,203 @@
+#include <cstdlib>
+#include <ctime>
+#include <iomanip>
 #include <iostream>
 #include <vector>
+#include "engineCore.hpp"
+
+#define RESET "\033[0m"
+#define BLUE "\033[34m"
+#define GREEN "\033[32m"
+#define RED "\033[31m"
+#define YELLOW "\033[33m"
+#define CYAN "\033[36m"
+
 
 class Barco {
-   public:
-    int x;
-    int y;
-    int lon;
+public:
+    int x, y, lon;
     bool horizontal;
+    std::vector<std::pair<int, int>> posiciones;  // Posiciones del barco en el tablero
 
     Barco(int xpos, int ypos, int longitud, bool hori)
-        : x(xpos), y(ypos), lon(longitud), horizontal(hori) {}
+        : x(xpos), y(ypos), lon(longitud), horizontal(hori) {
+        for (int i = 0; i < lon; i++) {
+            posiciones.push_back(horizontal ? std::make_pair(x, y + i) : std::make_pair(x + i, y));
+        }
+    }
 };
 
-class Lancha : public Barco {
+class Tablero {
    public:
-    Lancha(int xpos, int ypos, bool hori)
-        : Barco(xpos, ypos, 2, hori) {}
-};
+    int matrizPrivada[SIZE][SIZE] = {0};  // Tablero privado con barcos
+    int matrizPublica[SIZE][SIZE] = {0};  // Tablero público (0 = agua, 2 = disparo fallado, 3 = disparo acertado)
+    std::vector<Barco> barcos;
 
-class Destructor : public Barco {
-   public:
-    Destructor(int xpos, int ypos, bool hori)
-        : Barco(xpos, ypos, 3, hori) {}
-};
-
-class Crucero : public Barco {
-   public:
-    Crucero(int xpos, int ypos, bool hori)
-        : Barco(xpos, ypos, 4, hori) {}
-};
-
-class Acorazado : public Barco {
-   public:
-    Acorazado(int xpos, int ypos, bool hori)
-        : Barco(xpos, ypos, 5, hori) {}
-};
-int const SIZE = 10;
-
-int tablero[SIZE][SIZE];
-int probabilidades[SIZE][SIZE];
-
-void calcularProbabilidades(int tablero[SIZE][SIZE], int probabilidades[SIZE][SIZE], int longitudBarco) {
-    // Horizontalmente: verificamos celdas libres en cada fila
-    for (int i = 0; i < SIZE; ++i) {
-        int celdasLibres = 0;
-
-        // Primer barrido para acumulación de celdas libres
-        for (int j = 0; j < SIZE; ++j) {
-            if (tablero[i][j] == 0) { // Celda no disparada
-                ++celdasLibres;
-            } else {
-                celdasLibres = 0; // Reseteamos si hay un disparo
+    bool colocarBarco(Barco barco) {
+        for (auto pos : barco.posiciones) {
+            int i = pos.first, j = pos.second;
+            if (i >= SIZE || j >= SIZE || matrizPrivada[i][j] != 0) {
+                return false;  // Fuera de límites o posición ocupada
             }
+        }
+        for (auto pos : barco.posiciones) {
+            matrizPrivada[pos.first][pos.second] = 1;  // Colocamos el barco en el tablero privado
+        }
+        barcos.push_back(barco);
+        return true;
+    }
 
-            // Si tenemos suficientes celdas libres para el barco
-            if (celdasLibres >= longitudBarco) {
-                // Incrementamos el rango actual para todas las celdas posibles
-                for (int k = j - longitudBarco + 1; k <= j; ++k) {
-                    probabilidades[i][k]++;
-                }
-            }
+    bool disparar(int x, int y) {
+        if (x < 0 || x >= SIZE || y < 0 || y >= SIZE || matrizPublica[x][y] == 2 || matrizPublica[x][y] == 3) {
+            std::cout << "Disparo inválido.\n";
+            return false;
+        }
+        if (matrizPrivada[x][y] == 1) {
+            matrizPublica[x][y] = 3;  // Marcamos como disparo acertado en el tablero público
+            std::cout << "¡Barco tocado!\n";
+            return true;
+        } else {
+            matrizPublica[x][y] = 2;  // Marcamos como disparo fallido en el tablero público
+            std::cout << "Agua...\n";
+            return false;
         }
     }
 
-    // Verticalmente: verificamos celdas libres en cada columna
-    for (int j = 0; j < SIZE; ++j) {
-        int celdasLibres = 0;
-
-        // Primer barrido para acumulación de celdas libres
+    bool quedanBarcos() {
         for (int i = 0; i < SIZE; ++i) {
-            if (tablero[i][j] == 0) { // Celda no disparada
-                ++celdasLibres;
-            } else {
-                celdasLibres = 0; // Reseteamos si hay un disparo
+            for (int j = 0; j < SIZE; ++j) {
+                if (matrizPrivada[i][j] == 1) return true;  // Revisamos el tablero privado
             }
+        }
+        return false;
+    }
 
-            // Si tenemos suficientes celdas libres para el barco
-            if (celdasLibres >= longitudBarco) {
-                // Incrementamos el rango actual para todas las celdas posibles
-                for (int k = i - longitudBarco + 1; k <= i; ++k) {
-                    probabilidades[k][j]++;
+    void imprimirTablero(bool mostrarBarcos = false) const {
+        if (mostrarBarcos) {
+            std::cout << "╔══════════════════════════╗" << std::endl;
+            std::cout << "║     " << CYAN << "Tablero Privado" << RESET << "     ║" << std::endl;
+            std::cout << "╚══════════════════════════╝" << std::endl;
+        } else {
+            std::cout << "╔══════════════════════════╗" << std::endl;
+            std::cout << "║     " << CYAN << "Tablero Público" << RESET << "     ║" << std::endl;
+            std::cout << "╚══════════════════════════╝" << std::endl;
+        }
+
+        std::cout << "     ";
+        for (int i = 0; i < SIZE; ++i)
+            std::cout << i << " ";  // Aligning column numbers
+        std::cout << "\n   ───────────────────────" << std::endl;
+
+        for (int i = 0; i < SIZE; ++i) {
+            std::cout << std::setw(2) << i << " │ ";  // Aligning row numbers
+            for (int j = 0; j < SIZE; ++j) {
+                if (mostrarBarcos) {
+                    // Imprimimos el tablero privado
+                    if (matrizPrivada[i][j] == 0)
+                        std::cout << BLUE << "~ " << RESET;  // Agua
+                    else if (matrizPrivada[i][j] == 1)
+                        std::cout << GREEN << "B " << RESET;  // Barco
+                } else {
+                    // Imprimimos el tablero público
+                    if (matrizPublica[i][j] == 0)
+                        std::cout << BLUE << "~ " << RESET;  // Agua
+                    else if (matrizPublica[i][j] == 2)
+                        std::cout << YELLOW << "O " << RESET;  // Disparo fallado
+                    else if (matrizPublica[i][j] == 3)
+                        std::cout << RED << "X " << RESET;  // Disparo acertado
                 }
+            }
+            std::cout << "│" << std::endl;  // End of row
+        }
+
+        std::cout << "   ───────────────────────" << std::endl;
+    }
+};
+
+// Colocar barcos aleatoriamente en el tablero
+void inicializarTableroAleatorio(Tablero &tablero) {
+    srand(time(0));
+    std::vector<int> longitudes = {2, 3, 3, 4, 5};  // Longitudes de los barcos
+
+    for (int lon : longitudes) {
+        bool colocado = false;
+        while (!colocado) {
+            int x = rand() % SIZE;
+            int y = rand() % SIZE;
+            bool horizontal = rand() % 2;
+            Barco barco(x, y, lon, horizontal);
+            colocado = tablero.colocarBarco(barco);
+        }
+    }
+}
+
+// Función para colocar barcos de manera interactiva para el jugador
+void colocarBarcosJugador(Tablero &tablero) {
+    std::vector<int> longitudes = {2, 3, 3, 4, 5};  // Longitudes de los barcos
+    for (int lon : longitudes) {
+        bool colocado = false;
+        while (!colocado) {
+            int x, y;
+            bool horizontal;
+            std::cout << "Coloca un barco de longitud " << lon << ". Ingresa las coordenadas (x y) y orientación (0 para horizontal, 1 para vertical): ";
+            std::cin >> x >> y >> horizontal;
+            Barco barco(x, y, lon, horizontal);
+            colocado = tablero.colocarBarco(barco);
+            if (!colocado) {
+                std::cout << "Posición inválida. Intenta de nuevo.\n";
             }
         }
     }
 }
 
+// Generar disparos aleatorios para el bot
+std::pair<int, int> disparoAleatorio() {
+    return {rand() % SIZE, rand() % SIZE};
+}
 
 int main() {
-    int tablero[SIZE][SIZE] = {0};       // Inicializamos el tablero con 0 (sin disparos)
-    int probabilidades[SIZE][SIZE] = {0}; // Inicializamos el tablero de probabilidades con 0
-    int longitudBarco = 3; // Ejemplo: barcos de longitud 3
+    Tablero jugador, bot;
+    int probabilidades[SIZE][SIZE] = {0};
+    // Colocar los barcos del jugador manualmente
+    colocarBarcosJugador(jugador);
 
-    // Calculamos probabilidades
-    calcularProbabilidades(tablero, probabilidades, longitudBarco);
+    // Colocar los barcos del bot aleatoriamente
+    inicializarTableroAleatorio(bot);
 
-    // Imprimimos el tablero de probabilidades
-    for (int i = 0; i < SIZE; ++i) {
-        for (int j = 0; j < SIZE; ++j) {
-            std::cout << probabilidades[i][j] << " ";
+    // Comienza el juego
+    while (bot.quedanBarcos() && jugador.quedanBarcos()) {
+        int x, y;
+        system("clear");  // Limpia la consola en Linux/macOS
+        // system("cls");  // Para Windows
+
+        // Mostrar tableros
+        jugador.imprimirTablero(false);  // Muestra el tablero del jugador sin barcos
+
+        calcularProbabilidades(bot.matrizPublica, probabilidades, 3);
+        mostrarHeatMapEscalado(probabilidades);
+
+
+        bot.imprimirTablero(false);  // Muestra el tablero del bot sin barcos
+
+        // Turno del jugador
+        std::cout << "\nIntroduce coordenadas para disparar (x y): ";
+        std::cin >> x >> y;
+        bot.disparar(x, y);
+
+        if (!bot.quedanBarcos()) {
+            std::cout << "¡Felicidades, hundiste todos los barcos del bot!\n";
+            break;
         }
-        std::cout << std::endl;
+
+        // Turno del bot
+        auto [botX, botY] = disparoAleatorio();
+        std::cout << "El bot dispara en (" << botX << ", " << botY << ")\n";
+        jugador.disparar(botX, botY);
+
+        if (!jugador.quedanBarcos()) {
+            std::cout << "El bot ha hundido todos tus barcos. ¡Game over!\n";
+            break;
+        }
     }
 
     return 0;
