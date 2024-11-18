@@ -272,7 +272,6 @@ int main() {
     tuple<int, int> coordenadas;
     // Comienza el juego
     while (bot.quedanBarcos() && jugador.quedanBarcos()) {
-        sleep(1);
         system("clear");  // Limpia la consola en Linux/macOS
         // system("cls");  // Para Windows
 
