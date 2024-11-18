@@ -1,69 +1,81 @@
 #include "engineCore.hpp"
+#define HIT_BONUS 12
+#define BORDE_BONUS 4
 
-#include <cstring>
+#include <tuple>
 
-void calcularProbabilidades(int tablero[SIZE][SIZE], int probabilidades[SIZE][SIZE], int longitudBarco) {
-    // Inicializamos la matriz de probabilidades en cero
-    memset(probabilidades, 0, sizeof(int) * SIZE * SIZE);
+using namespace std;
 
-    // Horizontalmente: verificamos celdas libres en cada fila
-    for (int i = 0; i < SIZE; ++i) {
-        int celdasLibres = 0;
-
-        // Primer barrido para acumulación de celdas libres
-        for (int j = 0; j < SIZE; ++j) {
-            if (tablero[i][j] == 0) {  // Celda no disparada
-                ++celdasLibres;
-            } else {
-                celdasLibres = 0;  // Reseteamos si hay un disparo
+void calcularProbabilidades(int tablero[SIZE][SIZE], int probabilidades[SIZE][SIZE], vector<int> vectorLon) {
+    for (int i = 0; i < SIZE; i++) {
+        for (int j = 0; j < SIZE; j++) {
+            if (i == SIZE - 1 || j == SIZE - 1 || i == 0 || j == 0) {
+                probabilidades[i][j] += BORDE_BONUS;
             }
+
             if (tablero[i][j] == 3) {
-                if (i + 1 < SIZE &&  tablero[i + 1][j] == 0) {
-                    probabilidades[i + 1][j] += 5;
+                if (i + 1 < SIZE && tablero[i + 1][j] == 0) {
+                    probabilidades[i + 1][j] += HIT_BONUS;
                 }
-                if (i - 1 >= 0 &&  tablero[i - 1][j] == 0) {
-                    probabilidades[i - 1][j] += 5;
+                if (i - 1 >= 0 && tablero[i - 1][j] == 0) {
+                    probabilidades[i - 1][j] += HIT_BONUS;
                 }
-                if (j + 1 < SIZE &&  tablero[i][j+1] == 0) {
-                    probabilidades[i][j+1] += 5;
+                if (j + 1 < SIZE && tablero[i][j + 1] == 0) {
+                    probabilidades[i][j + 1] += HIT_BONUS;
                 }
-                if (j - 1 >= 0 &&  tablero[i][j-1] == 0) {
-                    probabilidades[i][j-1] += 5;
-                }
-            }
-
-            // Si tenemos suficientes celdas libres para el barco
-            if (celdasLibres >= longitudBarco) {
-                // Incrementamos el rango actual para todas las celdas posibles
-                for (int k = j - longitudBarco + 1; k <= j; ++k) {
-                    // Verificamos que la celda no haya sido disparada
-                    if (tablero[i][k] == 0) {
-                        probabilidades[i][k]++;
-                    }
+                if (j - 1 >= 0 && tablero[i][j - 1] == 0) {
+                    probabilidades[i][j - 1] += HIT_BONUS;
                 }
             }
         }
     }
 
-    // Verticalmente: verificamos celdas libres en cada columna
-    for (int j = 0; j < SIZE; ++j) {
-        int celdasLibres = 0;
-
-        // Primer barrido para acumulación de celdas libres
+    for (const int &longitudBarco : vectorLon) {
+        // Horizontalmente: verificamos celdas libres en cada fila
         for (int i = 0; i < SIZE; ++i) {
-            if (tablero[i][j] == 0) {  // Celda no disparada
-                ++celdasLibres;
-            } else {
-                celdasLibres = 0;  // Reseteamos si hay un disparo
-            }
+            int celdasLibres = 0;
 
-            // Si tenemos suficientes celdas libres para el barco
-            if (celdasLibres >= longitudBarco) {
-                // Incrementamos el rango actual para todas las celdas posibles
-                for (int k = i - longitudBarco + 1; k <= i; ++k) {
-                    // Verificamos que la celda no haya sido disparada
-                    if (tablero[k][j] == 0) {
-                        probabilidades[k][j]++;
+            // Primer barrido para acumulación de celdas libres
+            for (int j = 0; j < SIZE; ++j) {
+                if (tablero[i][j] == 0) {  // Celda no disparada
+                    ++celdasLibres;
+                } else {
+                    celdasLibres = 0;  // Reseteamos si hay un disparo
+                }
+
+                // Si tenemos suficientes celdas libres para el barco
+                if (celdasLibres >= longitudBarco) {
+                    // Incrementamos el rango actual para todas las celdas posibles
+                    for (int k = j - longitudBarco + 1; k <= j; ++k) {
+                        // Verificamos que la celda no haya sido disparada
+                        if (k >= 0 && k < SIZE && tablero[i][k] == 0) {
+                            probabilidades[i][k]++;
+                        }
+                    }
+                }
+            }
+        }
+
+        // Verticalmente: verificamos celdas libres en cada columna
+        for (int j = 0; j < SIZE; ++j) {
+            int celdasLibres = 0;
+
+            // Primer barrido para acumulación de celdas libres
+            for (int i = 0; i < SIZE; ++i) {
+                if (tablero[i][j] == 0) {  // Celda no disparada
+                    ++celdasLibres;
+                } else {
+                    celdasLibres = 0;  // Reseteamos si hay un disparo
+                }
+
+                // Si tenemos suficientes celdas libres para el barco
+                if (celdasLibres >= longitudBarco) {
+                    // Incrementamos el rango actual para todas las celdas posibles
+                    for (int k = i - longitudBarco + 1; k <= i; ++k) {
+                        // Verificamos que la celda no haya sido disparada
+                        if (k >= 0 && k < SIZE && tablero[i][k] == 0) {
+                            probabilidades[k][j]++;
+                        }
                     }
                 }
             }
@@ -122,4 +134,18 @@ void mostrarHeatMapEscalado(int probabilidades[SIZE][SIZE]) {
         }
         std::cout << std::endl;
     }
+}
+
+std::tuple<int, int> calcularDisparo(int probabilidades[SIZE][SIZE]) {
+    int maxX, maxY, maxN = -1;
+    for (int i = 0; i < SIZE; i++) {
+        for (int j = 0; j < SIZE; j++) {
+            if (probabilidades[i][j] > maxN) {
+                maxX = i;
+                maxY = j;
+                maxN = probabilidades[i][j];
+            }
+        }
+    }
+    return std::make_tuple(maxX, maxY);
 }
