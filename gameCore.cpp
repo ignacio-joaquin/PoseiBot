@@ -1,10 +1,12 @@
 #include <unistd.h>
 
+#include <chrono>  // Para medir el tiempo
 #include <cstdlib>
 #include <cstring>
 #include <ctime>
 #include <iomanip>
 #include <iostream>
+#include <string>  // Para manejar argumentos de línea de comandos
 #include <tuple>
 #include <vector>
 
@@ -76,7 +78,7 @@ class Tablero {
             matrizPublica[x][y] = 2;
             matrizPrivada[x][y] = 2;  // Marcamos como disparo fallido en el tablero público
             std::cout << "Agua...\n";
-            return false;
+            return true;
         }
     }
 
@@ -245,6 +247,7 @@ void colocarBarcosJugador(Tablero &tablero) {
             colocado = tablero.colocarBarco(barco, true);
             if (!colocado) {
                 std::cout << "Posición inválida. Intenta de nuevo.\n";
+                tablero.imprimirTablero(true);
             }
         }
     }
@@ -255,21 +258,28 @@ std::pair<int, int> disparoAleatorio() {
     return {rand() % SIZE, rand() % SIZE};
 }
 
-int main() {
+int main(int argc, char *argv[]) {
+    // Verificar si el modo debug está activado
+    bool debugMode = false;
+    if (argc > 1 && std::string(argv[1]) == "--debug") {
+        debugMode = true;
+    }
+
     srand(time(0));
     int x, y;
     Tablero jugador, bot;
     int probabilidades[SIZE][SIZE] = {0};
+
     // Colocar los barcos del jugador manualmente
     colocarBarcosJugador(jugador);
 
     // Colocar los barcos del bot aleatoriamente
-
     for (const int &longitudBarco : longitudes) {
         colocarBarcoBot(bot, longitudBarco);
     }
 
-    tuple<int, int> coordenadas;
+    std::tuple<int, int> coordenadas;
+
     // Comienza el juego
     while (bot.quedanBarcos() && jugador.quedanBarcos()) {
         system("clear");  // Limpia la consola en Linux/macOS
@@ -278,16 +288,29 @@ int main() {
         // Mostrar tableros
         jugador.imprimirTablero(true);  // Muestra el tablero del jugador sin barcos
         memset(probabilidades, 0, sizeof(int) * SIZE * SIZE);
-        calcularProbabilidades(jugador.matrizPublica, probabilidades, longitudes);
 
-        mostrarHeatMapEscalado(probabilidades);
+        // Medir tiempo de calcularProbabilidades si está en modo debug
+        auto start = std::chrono::high_resolution_clock::now();
+        calcularProbabilidades(jugador.matrizPublica, probabilidades, longitudes);
+        auto end = std::chrono::high_resolution_clock::now();
+
+        if (debugMode) {
+            auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
+            std::cout << "\nTiempo para calcularProbabilidades: " << duration << " ms\n";
+
+            // Mostrar probabilidades sin escalar
+            mostrarHeatMapEscalado(probabilidades);
+        }
 
         bot.imprimirTablero(false);  // Muestra el tablero del bot sin barcos
 
         // Turno del jugador
         std::cout << "\nIntroduce coordenadas para disparar (x y): ";
         std::cin >> x >> y;
-        bot.disparar(x, y);
+        while (!bot.disparar(x, y)) {
+            std::cout << "\nIntroduce coordenadas para disparar (x y): ";
+            std::cin >> x >> y;
+        }
 
         if (!bot.quedanBarcos()) {
             std::cout << "¡Felicidades, hundiste todos los barcos del bot!\n";
@@ -295,10 +318,9 @@ int main() {
         }
 
         // Turno del bot
-
         coordenadas = calcularDisparo(probabilidades);
-        jugador.disparar(get<0>(coordenadas), get<1>(coordenadas));
-        std::cout << "El bot dispara en (" << get<0>(coordenadas) << ", " << get<1>(coordenadas) << ")\n";
+        jugador.disparar(std::get<0>(coordenadas), std::get<1>(coordenadas));
+        std::cout << "El bot dispara en (" << std::get<0>(coordenadas) << ", " << std::get<1>(coordenadas) << ")\n";
 
         if (!jugador.quedanBarcos()) {
             std::cout << "El bot ha hundido todos tus barcos. ¡Game over!\n";
