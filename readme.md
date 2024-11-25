@@ -17,16 +17,14 @@
 # PoseiBot - Battleship AI
 
 PoseiBot is an AI-driven opponent for the classic game of Battleship. This project was a way to start with some serius (ish) C++ programming, combaining this with the implemetation of greedy strategie (another thing i had never used before in a project).
-Table of Contents
-
-
-    Description
-    Features
-    Inspiration
-    Installation
-    Usage
-    Contributing
-    License
+## Table of Contents
+    [Description](#description)
+    [Features](#features)
+    [Inspiration](#inspiration)
+    [Installation](#installation)
+    [Usage](#usage)
+    [Contributing](#contributing)
+    [License](#license)
 
 ## Description
 
@@ -72,7 +70,7 @@ Run the game:
 
     ./poseibot  
 
-Usage
+## Usage
 
     Upon launching, follow the on-screen instructions to place your ships.
     Play against PoseiBot and see how its AI adapts to your moves!
@@ -100,4 +98,4 @@ Push to the branch:
 ## License
 
 This work is licensed under a
-[Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International License][license].
+[Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International License](license).
